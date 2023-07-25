@@ -1,49 +1,34 @@
-#!/bin/bash
-PSQL="psql -X --username=freecodecamp --dbname=periodic_table --tuples-only -c"
+#! /bin/bash
 
-QUERY () {
-  TYPE=$($PSQL "SELECT type FROM types INNER JOIN properties ON types.type_id=properties.type_id WHERE properties.atomic_number=$NUMBER")
-  MASS=$($PSQL "SELECT atomic_mass FROM properties WHERE atomic_number=$NUMBER")
-  MELTING_PT=$($PSQL "SELECT melting_point_celsius FROM properties WHERE atomic_number=$NUMBER")
-  BOILING_PT=$($PSQL "SELECT boiling_point_celsius FROM properties WHERE atomic_number=$NUMBER")
-  echo "The element with atomic number ${NUMBER// /} is$NAME (${SYMBOL// /}). It's a$TYPE, with a mass of ${MASS// /} amu.$NAME has a melting point of ${MELTING_PT// /} celsius and a boiling point of ${BOILING_PT// /} celsius."
-}
+PSQL="psql -X --username=freecodecamp --dbname=periodic_table --no-align --tuples-only -c"; 
 
-if [[ -z $1 ]];
-then 
-    echo -e "Please provide an element as an argument."
-else
-    if [[ $1 =~ ^[0-9]+$ ]]
-    then 
-      NUMBER=$($PSQL "SELECT atomic_number FROM elements WHERE atomic_number=$1")
-      if [[ -z $NUMBER ]] 
-      then
-        echo "I could not find that element in the database."
-      else
-        SYMBOL=$($PSQL "SELECT symbol FROM elements WHERE atomic_number=$1")
-        NAME=$($PSQL "SELECT name FROM elements WHERE atomic_number=$1")
-        QUERY  
-      fi
-    elif [[ ${#1} -eq 2 || ${#1} -eq 1 ]]
-    then 
-      SYMBOL=$($PSQL "SELECT symbol FROM elements WHERE symbol='$1'")
-      if [[ -z $SYMBOL ]]
-      then
-        echo "I could not find that element in the database."
-      else 
-        NUMBER=$($PSQL "SELECT atomic_number FROM elements WHERE symbol='$1'")
-        NAME=$($PSQL "SELECT name FROM elements WHERE symbol='$1'")
-        QUERY
-      fi
-    else 
-      NAME=$($PSQL "SELECT name FROM elements WHERE name='$1'")
-      if [[ -z $NAME ]]
-      then
-        echo "I could not find that element in the database."
-      else 
-        NUMBER=$($PSQL "SELECT atomic_number FROM elements WHERE name='$1'")
-        SYMBOL=$($PSQL "SELECT symbol FROM elements WHERE name='$1'") 
-        QUERY
-      fi
+if [[ $1 ]]
+
+  then
+
+  if [[ ! $1 =~ ^[0-9]+$ ]]
+  
+  then
+ 
+  ELEMENT=$($PSQL "SELECT atomic_number, atomic_mass, melting_point_celsius, boiling_point_celsius, symbol, name, type FROM properties JOIN elements USING (atomic_number) JOIN types USING (type_id) WHERE elements.name LIKE '$1%' ORDER BY atomic_number LIMIT 1")
+
+  else
+  
+  ELEMENT=$($PSQL "SELECT atomic_number, atomic_mass, melting_point_celsius, boiling_point_celsius, symbol, name, type FROM properties JOIN elements USING (atomic_number) JOIN types USING (type_id) WHERE elements.atomic_number = $1")
+  fi
+  
+  if [[ -z $ELEMENT ]]
+    then
+    echo "I could not find that element in the database."
+  
+    else
+    echo $ELEMENT | while IFS=\| read ATOMIC_NUMBER ATOMIC_MASS MPC BPC SYMBOL NAME TYPE
+    do
+
+      echo "The element with atomic number $ATOMIC_NUMBER is $NAME ($SYMBOL). It's a $TYPE, with a mass of $ATOMIC_MASS amu. $NAME has a melting point of $MPC celsius and a boiling point of $BPC celsius."
+    done
     fi
+
+else
+echo  "Please provide an element as an argument." 
 fi
